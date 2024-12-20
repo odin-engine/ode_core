@@ -1,2 +1,3 @@
-# ode_core
-ODE_CORE functionality that is common to many ODE projects
+# ode-core
+
+Core/utility functionality that is used in ODE projects.
