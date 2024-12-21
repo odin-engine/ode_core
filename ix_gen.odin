@@ -36,10 +36,8 @@ package ode_core
         self.cap = cap
 
         self.items = make([]ix_gen, cap, allocator) or_return
-        for &item in self.items do item.ix = DELETED_INDEX
-        
         self.freed = make([]int, cap, allocator) or_return 
-        for i:=0; i < cap; i+=1 do self.freed[i] = DELETED_INDEX
+        ix_gen_factory__clear(self)
 
         return runtime.Allocator_Error.None
     }
@@ -122,4 +120,16 @@ package ode_core
         }
         
         return total
+    }
+
+    ix_gen_factory__clear :: proc(self: ^Ix_Gen_Factory) {
+        assert(self != nil)
+        assert(self.items != nil)
+        assert(self.freed != nil)
+
+        self.created_count = 0
+        self.freed_count = 0
+        for &item in self.items do item.ix = DELETED_INDEX
+        for i:=0; i < self.cap; i+=1 do self.freed[i] = DELETED_INDEX
+
     }

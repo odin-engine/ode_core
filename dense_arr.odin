@@ -91,5 +91,9 @@ package ode_core
     }
 
     dense_arr__zero :: proc (self: ^Dense_Arr($T)) {
-        mem.zero(self.items, size_of(T) * self.cap)
-    }
+        assert(self.items != nil)
+
+        mem.zero(raw_data(self.items), size_of(T) * self.cap)
+    } 
+
+    dense_arr__clear :: dense_arr__zero

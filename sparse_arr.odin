@@ -114,3 +114,12 @@ package ode_core
 
         return total
     }
+
+    sparse_arr__zero :: proc (self: ^Sparce_Arr($T)) {
+        assert(self.items != nil)
+
+        self.has_nil_item = false
+        mem.zero(raw_data(self.items), size_of(^T) * self.cap)
+    }
+
+    sparse_arr__clear :: sparse_arr__zero
