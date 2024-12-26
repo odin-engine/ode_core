@@ -114,6 +114,11 @@ package ode_core
         return self.items[id.ix].gen != id.gen
     }
 
+    @(require_results)
+    ix_gen_factory__len :: #force_inline proc "contextless" (self: ^Ix_Gen_Factory) -> int {
+        return self.created_count - self.freed_count
+    }
+
     // in bytes
     ix_gen_factory__memory_usage :: proc(self: ^Ix_Gen_Factory) -> int {
         total := size_of(self^)
