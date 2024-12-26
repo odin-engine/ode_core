@@ -100,6 +100,12 @@ package ode_core
         return Core_Error.None
     }
 
+    ix_gen_factory__get_id :: #force_inline proc "contextless" (self: ^Ix_Gen_Factory, #any_int index: int, loc := #caller_location) -> ix_gen {
+        runtime.bounds_check_error_loc(loc, index, self.cap)
+    
+        return self.items[index]
+    }
+
     ix_gen_factory__is_freed :: #force_inline proc(self: ^Ix_Gen_Factory, id: ix_gen) -> bool {
         return self.items[id.ix].ix == DELETED_INDEX 
     }
