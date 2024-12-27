@@ -55,6 +55,13 @@ package ode_core
         id: ix_gen 
         p: ^ix_gen
         ix: int
+
+        if ix_gen_factory__len(self)  >= self.cap {
+            id.ix = DELETED_INDEX
+            id.gen = 0
+            return id, Core_Error.Container_Is_Full
+        }
+
         if self.freed_count > 0 {
             // reuse freed id
             self.freed_count -= 1 
@@ -69,12 +76,6 @@ package ode_core
 
             id = p^
         } else {
-            if self.created_count >= self.cap {
-                id.ix = DELETED_INDEX
-                id.gen = 0
-                return id, Core_Error.Container_Is_Full
-            }
-
             p = &self.items[self.created_count]
             assert(p.ix == DELETED_INDEX) // sanity check
             p.ix = self.created_count
