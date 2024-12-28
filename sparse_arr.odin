@@ -9,6 +9,7 @@ package ode_core
 // Core
     import "core:log"
     import "core:mem"
+    import "core:testing"
 
 ///////////////////////////////////////////////////////////////////////////////
 // Sparce_Arr -- unmovable ordered sparse array of pointers 
@@ -123,3 +124,94 @@ package ode_core
     }
 
     sparse_arr__clear :: sparse_arr__zero
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Tests
+// 
+    
+    @(test)
+    sparse_arr__test :: proc(t: ^testing.T) {
+        // Log into console when panic happens
+        context.logger = log.create_console_logger()
+        defer log.destroy_console_logger(context.logger)
+
+        allocator := context.allocator
+        context.allocator = mem.panic_allocator() // to make sure no allocations happen outside provided allocator
+
+        ua_1: Sparce_Arr(int)
+        a : int = 66
+        b : int = 99
+        c : int = 88
+
+        alloc_err: runtime.Allocator_Error
+        err: Core_Error
+        ix: int
+
+        defer sparse_arr__terminate(&ua_1, allocator)
+        alloc_err = sparse_arr__init(&ua_1, 2, allocator)
+        testing.expect(t, alloc_err == runtime.Allocator_Error.None)
+
+        testing.expect(t, ua_1.has_nil_item == false)
+        testing.expect(t, sparse_arr__len(&ua_1) == 0) 
+        testing.expect(t, ua_1.cap == 2)
+
+        ix, err = sparse_arr__add(&ua_1, &a)
+        testing.expect(t, ix == 0)
+        testing.expect(t, err == Core_Error.None)
+
+        ix, err = sparse_arr__add(&ua_1, &b)
+        testing.expect(t, ix == 1)
+        testing.expect(t, err == Core_Error.None)
+
+        ix, err = sparse_arr__add(&ua_1, &c)
+        testing.expect(t, ix == DELETED_INDEX)
+        testing.expect(t, err == Core_Error.Container_Is_Full)
+        testing.expect(t, ua_1.has_nil_item == false)
+        testing.expect(t, sparse_arr__len(&ua_1) == 2)
+
+        // sparse_arr__remove_by_index(&ua_1, 999)
+        //testing.expect(t, err == Core_Error.Out_Of_Bounds)
+
+        sparse_arr__remove_by_index(&ua_1, 0)
+
+        testing.expect(t, ua_1.has_nil_item == true)
+        testing.expect(t, sparse_arr__len(&ua_1) == 2)
+        testing.expect(t, ua_1.items[0] == nil)
+
+        err = sparse_arr__remove_by_value(&ua_1, &b)
+        testing.expect(t, err == Core_Error.None)
+        testing.expect(t, ua_1.has_nil_item == true)
+        testing.expect(t, sparse_arr__len(&ua_1) == 1)
+
+        #no_bounds_check {
+            testing.expect(t, ua_1.items[1] == nil)
+            testing.expect(t, ua_1.items[0] == nil)
+        }
+
+        err = sparse_arr__remove_by_value(&ua_1, &c)
+        testing.expect(t, err == Core_Error.Not_Found)
+        testing.expect(t, ua_1.has_nil_item == true)
+        testing.expect(t, sparse_arr__len(&ua_1) == 1)
+
+        #no_bounds_check {
+            testing.expect(t, ua_1.items[1] == nil)
+            testing.expect(t, ua_1.items[0] == nil)
+        }
+
+        ix, err = sparse_arr__add(&ua_1, &a)
+        testing.expect(t, ix == 0)
+        testing.expect(t, err == Core_Error.None)
+
+        ix, err = sparse_arr__add(&ua_1, &b)
+        testing.expect(t, ix == 1)
+        testing.expect(t, err == Core_Error.None)
+        testing.expect(t, sparse_arr__len(&ua_1) == 2)
+        testing.expect(t, ua_1.has_nil_item == false)
+
+        // removing tail item, so it should just decrease ua_1.count
+        sparse_arr__remove_by_index(&ua_1, 1)
+        testing.expect(t, sparse_arr__len(&ua_1) == 1)
+        testing.expect(t, ua_1.has_nil_item == false)
+
+    }

@@ -1,2 +1,2 @@
-tests/out/*
-!tests/out/.keep
+out/*
+!out/.keep

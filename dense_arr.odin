@@ -9,6 +9,7 @@ package ode_core
 // Core
     import "core:log"
     import "core:mem"
+    import "core:testing"
 
 ///////////////////////////////////////////////////////////////////////////////
 // Dense_Arr -- tail swap unordered dense preallocated array. 
@@ -97,3 +98,74 @@ package ode_core
     } 
 
     dense_arr__clear :: dense_arr__zero
+
+///////////////////////////////////////////////////////////////////////////////
+// Tests
+
+    @(test)
+    dense_arr__test :: proc(t: ^testing.T) {
+        // Log into console when panic happens
+        context.logger = log.create_console_logger()
+        defer log.destroy_console_logger(context.logger)
+
+        allocator := context.allocator
+        context.allocator = mem.panic_allocator() // to make sure no allocations happen outside provided allocator
+
+        arr: Dense_Arr(int)
+
+        a : int = 66
+        b : int = 99
+        c : int = 88
+
+        alloc_err: runtime.Allocator_Error
+        err: Core_Error
+        ix: int
+
+        defer dense_arr__terminate(&arr, allocator)
+        alloc_err = dense_arr__init(&arr, 2, allocator)
+        testing.expect(t, alloc_err == runtime.Allocator_Error.None)
+
+        ix, err = dense_arr__add(&arr, a)
+        testing.expect(t, ix == 0)
+        testing.expect(t, err == Core_Error.None)
+
+        ix, err = dense_arr__add(&arr, b)
+        testing.expect(t, ix == 1)
+        testing.expect(t, err == Core_Error.None)
+        testing.expect(t, dense_arr__len(&arr) == 2)
+        testing.expect(t, arr.items[0] == 66)
+        testing.expect(t, arr.items[1] == 99)
+
+        ix, err = dense_arr__add(&arr, c)
+        testing.expect(t, ix == DELETED_INDEX)
+        testing.expect(t, err == Core_Error.Container_Is_Full)
+        testing.expect(t, dense_arr__len(&arr) == 2)
+
+        // dense_arr__remove_by_index(arr, 999)
+        //testing.expect(t, err == Core_Error.Out_Of_Bounds)
+
+        dense_arr__remove_by_index(&arr, 0)
+
+        testing.expect(t, dense_arr__len(&arr) == 1)
+        testing.expect(t, arr.items[0] == 99)
+
+        err = dense_arr__remove_by_value(&arr, b)
+        testing.expect(t, err == Core_Error.None)
+        testing.expect(t, dense_arr__len(&arr) == 0)
+
+        err = dense_arr__remove_by_value(&arr, c)
+        testing.expect(t, err == Core_Error.Not_Found)
+
+        ix, err = dense_arr__add(&arr, a)
+        testing.expect(t, ix == 0)
+        testing.expect(t, err == Core_Error.None)
+
+        ix, err = dense_arr__add(&arr, b)
+        testing.expect(t, ix == 1)
+        testing.expect(t, err == Core_Error.None)
+        testing.expect(t, dense_arr__len(&arr) == 2)
+
+        dense_arr__remove_by_index(&arr, 1)
+        testing.expect(t, dense_arr__len(&arr) == 1)
+        testing.expect(t, arr.items[0] == 66)
+    }

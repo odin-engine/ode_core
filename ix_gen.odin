@@ -9,6 +9,7 @@ package ode_core
 // Core
     import "core:log"
     import "core:mem"
+    import "core:testing"
 
 ///////////////////////////////////////////////////////////////////////////////
 // ix_gen -- index + generation 
@@ -144,4 +145,126 @@ package ode_core
         for &item in self.items do item.ix = DELETED_INDEX
         for i:=0; i < self.cap; i+=1 do self.freed[i] = DELETED_INDEX
 
+    }
+
+    @(test)
+    ix_gen_factory__test :: proc(t: ^testing.T) {
+
+        // Log into console when panic happens
+        context.logger = log.create_console_logger()
+        defer log.destroy_console_logger(context.logger)
+
+        allocator := context.allocator
+        context.allocator = mem.panic_allocator() // to make sure no allocations happen outside provided allocator
+
+        id_1: ix_gen 
+        id_2: ix_gen
+        id_3: ix_gen
+
+        testing.expect(t, id_1 == id_2)
+
+        id_1.ix = DELETED_INDEX
+        id_2.ix = DELETED_INDEX
+
+        testing.expect(t, id_1 == id_2)
+        testing.expect(t, id_1.ix == DELETED_INDEX)
+        testing.expect(t, id_1.gen == 0)
+
+        id_1.gen = 255
+        testing.expect(t, id_1.ix == DELETED_INDEX)
+        testing.expect(t, id_1 != id_2)
+
+        factory: Ix_Gen_Factory
+
+        defer ix_gen_factory__terminate(&factory, allocator)
+        ix_gen_factory__init(&factory, 2, allocator)
+
+        testing.expect(t, factory.cap == 2)
+        testing.expect(t, factory.freed_count == 0)
+        testing.expect(t, factory.created_count == 0)
+
+        err: Core_Error
+
+        id_1, err = ix_gen_factory__new_id(&factory)
+        testing.expect(t, err == Core_Error.None)
+        testing.expect(t, id_1.ix == 0)
+        testing.expect(t, id_1.gen == 0)
+
+        id_2, err = ix_gen_factory__new_id(&factory)
+        testing.expect(t, err == Core_Error.None)
+        testing.expect(t, id_2.ix == 1)
+        testing.expect(t, id_2.gen == 0)
+
+        id_3, err = ix_gen_factory__new_id(&factory)
+        testing.expect(t, err == Core_Error.Container_Is_Full)
+        testing.expect(t, id_3.ix == DELETED_INDEX)
+        testing.expect(t, id_3.gen == 0)
+
+        testing.expect(t, id_1.ix == 0)
+        err = ix_gen_factory__free_id(&factory, id_1)
+        testing.expect(t, err == Core_Error.None)
+        testing.expect(t, factory.created_count == 2)
+        testing.expect(t, factory.freed_count == 1)
+
+        id_1, err = ix_gen_factory__new_id(&factory)
+        testing.expect(t, err == Core_Error.None)
+        testing.expect(t, id_1.ix == 0)
+        testing.expect(t, id_1.gen == 1)
+        
+        err = ix_gen_factory__free_id(&factory, id_1)
+        testing.expect(t, err == Core_Error.None)
+        testing.expect(t, factory.created_count == 2)
+        testing.expect(t, factory.freed_count == 1)
+
+        id_1, err = ix_gen_factory__new_id(&factory)
+        testing.expect(t, err == Core_Error.None)
+        testing.expect(t, id_1.ix == 0)
+        testing.expect(t, id_1.gen == 2)
+
+        err = ix_gen_factory__free_id(&factory, id_1)
+        testing.expect(t, err == Core_Error.None)
+        testing.expect(t, factory.created_count == 2)
+        testing.expect(t, factory.freed_count == 1)
+        testing.expect(t, ix_gen_factory__is_freed(&factory, id_1))
+        testing.expect(t, ix_gen_factory__is_freed(&factory, id_2) == false)
+
+        err = ix_gen_factory__free_id(&factory, id_2)
+        testing.expect(t, err == Core_Error.None)
+        testing.expect(t, factory.created_count == 2)
+        testing.expect(t, factory.freed_count == 2)
+        testing.expect(t, ix_gen_factory__is_freed(&factory, id_1))
+        testing.expect(t, ix_gen_factory__is_freed(&factory, id_2))
+
+        id_4, id_5: ix_gen
+
+        testing.expect(t, id_1 != factory.items[0])
+        testing.expect(t, factory.items[0].ix == DELETED_INDEX)
+        testing.expect(t, factory.items[0].gen == 2)
+        testing.expect(t, id_2 != factory.items[1])
+        testing.expect(t, factory.items[1].ix == DELETED_INDEX)
+        testing.expect(t, factory.items[1].gen == 0)
+
+        id_3, err = ix_gen_factory__new_id(&factory)
+        testing.expect(t, err == Core_Error.None)
+        testing.expect(t, id_3.ix == 1)
+        testing.expect(t, id_3.gen == 1)
+        testing.expect(t, factory.created_count == 2)
+        testing.expect(t, factory.freed_count == 1)
+        testing.expect(t, ix_gen_factory__is_freed(&factory, id_3) == false)
+        testing.expect(t, ix_gen_factory__is_freed(&factory, id_2) == false)
+
+        id_4, err = ix_gen_factory__new_id(&factory)
+        testing.expect(t, err == Core_Error.None)
+        testing.expect(t, id_4.ix == 0)
+        testing.expect(t, id_4.gen == 3)
+        testing.expect(t, factory.created_count == 2)
+        testing.expect(t, factory.freed_count == 0)
+
+        testing.expect(t, id_4 != id_1)
+        testing.expect(t, id_3 != id_2)
+
+        id_5, err = ix_gen_factory__new_id(&factory)
+        testing.expect(t, err == Core_Error.Container_Is_Full)
+        testing.expect(t, factory.created_count == 2)
+        testing.expect(t, factory.freed_count == 0)
     }
