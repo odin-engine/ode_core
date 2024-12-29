@@ -60,6 +60,7 @@ import "core:testing"
         testing.expect(t, strings.compare(add_thousand_separator(1000000, ',', a), "1,000,000") == 0)
         testing.expect(t, strings.compare(add_thousand_separator(10000000, ',', a), "10,000,000") == 0)
         testing.expect(t, strings.compare(add_thousand_separator(-10000000, ',', a), "-10,000,000") == 0)
+        testing.expect(t, strings.compare(add_thousand_separator(-1, ',', a), "-1") == 0)
 
         mem.free_all(a)
     }
